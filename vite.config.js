@@ -3,6 +3,17 @@ import tailwindcss from '@tailwindcss/vite';
 import laravel from 'laravel-vite-plugin';
 
 export default defineConfig({
+    server: {
+        watch: {
+            usePolling: true,
+            interval: 1000,
+            ignored: [
+                '**/node_modules/**',
+                '**/vendor/**',
+                '**/storage/**',
+            ],
+        },
+    },
     plugins: [
         tailwindcss(),
         laravel({
