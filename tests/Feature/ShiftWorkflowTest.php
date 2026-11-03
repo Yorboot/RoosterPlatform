@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('planner cannot create a shift without a department or with an invalid time range', function () {
+test('planner cannot create a shift without a department', function () {
     $planner = User::factory()->create(['role' => 'planner']);
 
     $response = $this->actingAs($planner)->post(route('shifts.store'), [
@@ -15,19 +15,38 @@ test('planner cannot create a shift without a department or with an invalid time
         'description' => 'Balie',
         'department' => '',
         'required_staff' => 1,
-        'scheduled_date' => now()->addDay()->toDateString(),
+        'scheduled_date' => now()->addDays(2)->toDateString(),
         'begin_time' => '17:00',
         'end_time' => '09:00',
         'status' => 'published',
     ]);
 
-    $response->assertSessionHasErrors(['department', 'end_time']);
+    $response->assertSessionHasErrors(['department']);
+});
+
+test('a planner can create an overnight shift', function () {
+    $planner = User::factory()->create(['role' => 'planner']);
+
+    $response = $this->actingAs($planner)->post(route('shifts.store'), [
+        'title' => 'Nachtdienst',
+        'description' => 'Nachtbalie',
+        'department' => 'Beveiliging',
+        'required_staff' => 1,
+        'scheduled_date' => now()->addDay()->toDateString(),
+        'begin_time' => '22:00',
+        'end_time' => '02:00',
+        'status' => 'published',
+    ]);
+
+    $response->assertRedirect();
+    expect(Shift::latest('id')->first()->endDateTime()->toDateString())
+        ->toBe(now()->addDays(2)->toDateString());
 });
 
 test('a medewerker cannot enroll in overlapping shifts', function () {
     $employee = User::factory()->create(['role' => 'medewerker']);
     $first = Shift::factory()->create([
-        'scheduled_date' => now()->addDay()->toDateString(),
+        'scheduled_date' => now()->addDays(2)->toDateString(),
         'begin_time' => '09:00',
         'end_time' => '13:00',
         'required_staff' => 2,
@@ -120,4 +139,21 @@ test('a medewerker cannot change a task outside an enrolled shift', function () 
     $response->assertRedirect();
     $response->assertSessionHasErrors('task');
     expect($task->fresh()->status)->toBe('pending');
+});
+
+test('a planner can reassign a task from a deleted shift', function () {
+    $planner = User::factory()->create(['role' => 'planner']);
+    $shift = Shift::factory()->create();
+    $replacementShift = Shift::factory()->create();
+    $task = ShiftTask::factory()->create(['shift_id' => $shift->id]);
+
+    $this->actingAs($planner)->delete(route('shifts.destroy', $shift));
+    expect($task->fresh()->shift_id)->toBeNull();
+
+    $response = $this->actingAs($planner)->patch(route('tasks.assign', $task), [
+        'shift_id' => $replacementShift->id,
+    ]);
+
+    $response->assertRedirect();
+    expect($task->fresh()->shift_id)->toBe($replacementShift->id);
 });

@@ -77,9 +77,16 @@ class ShiftController extends Controller
     public function destroy(Shift $shift): RedirectResponse
     {
         $this->ensurePlanner();
+        $hadEnrollments = $shift->users()->exists();
         $shift->delete();
 
-        return redirect()->route('shifts.index')->with('success', 'Dienst verwijderd.');
+        $response = redirect()->route('shifts.index')->with('success', 'Dienst verwijderd. De inschrijvingen zijn verwijderd en de taken zijn beschikbaar als losse taken.');
+
+        if ($hadEnrollments) {
+            $response->with('warning', 'Let op: de verwijderde dienst had inschrijvingen. Controleer of andere diensten voldoende medewerkers hebben.');
+        }
+
+        return $response;
     }
 
     private function validated(Request $request): array
@@ -91,11 +98,10 @@ class ShiftController extends Controller
             'required_staff' => ['required', 'integer', 'min:1'],
             'scheduled_date' => ['required', 'date'],
             'begin_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:begin_time'],
+            'end_time' => ['required', 'date_format:H:i'],
             'status' => ['required', 'in:draft,published,completed'],
         ], [
             'department.required' => 'Een afdeling is verplicht.',
-            'end_time.after' => 'De eindtijd moet na de begintijd liggen.',
         ]);
 
         return $data;
@@ -116,8 +122,8 @@ class ShiftController extends Controller
             ->whereHas('users', fn ($query) => $query->whereIn('users.id', $userIds))
             ->get()
             ->contains(function (Shift $otherShift) use ($start, $end): bool {
-                $otherStart = $otherShift->scheduled_date->copy()->setTimeFromTimeString($otherShift->begin_time);
-                $otherEnd = $otherShift->scheduled_date->copy()->setTimeFromTimeString($otherShift->end_time);
+                $otherStart = $otherShift->startDateTime();
+                $otherEnd = $otherShift->endDateTime();
 
                 return $otherStart->lt($end) && $otherEnd->gt($start);
             });

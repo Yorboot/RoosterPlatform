@@ -29,6 +29,10 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('planner')
         ->whereNumber('shift')
         ->name('shifts.update');
+    Route::delete('/shifts/{shift}', [ShiftController::class, 'destroy'])
+        ->middleware('planner')
+        ->whereNumber('shift')
+        ->name('shifts.destroy');
     Route::post('/shifts/{shift}/enroll', [ShiftUserController::class, 'store'])
         ->whereNumber('shift')
         ->name('shifts.enroll');
@@ -44,6 +48,9 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('planner')
         ->whereNumber('shift')
         ->name('tasks.create');
+    Route::get('/tasks/unassigned', [ShifTaskController::class, 'unassigned'])
+        ->middleware('planner')
+        ->name('tasks.unassigned');
     Route::post('/shifts/{shift}/tasks', [ShifTaskController::class, 'store'])
         ->middleware('planner')
         ->whereNumber('shift')
@@ -59,4 +66,8 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/tasks/{task}/status', [ShifTaskController::class, 'updateStatus'])
         ->whereNumber('task')
         ->name('tasks.status');
+    Route::patch('/tasks/{task}/assign', [ShifTaskController::class, 'assign'])
+        ->middleware('planner')
+        ->whereNumber('task')
+        ->name('tasks.assign');
 });

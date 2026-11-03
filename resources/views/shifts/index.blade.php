@@ -18,6 +18,8 @@
         <p class="mt-4 text-slate-300">{{ $shift->description }}</p>
         <p class="mt-4 text-sm text-slate-400">{{ $shift->scheduled_date->format('d-m-Y') }} · {{ substr($shift->begin_time, 0, 5) }} - {{ substr($shift->end_time, 0, 5) }} · {{ $shift->users_count }}/{{ $shift->required_staff }} medewerkers</p>
         <div class="mt-5 flex flex-wrap gap-3"><a href="{{ route('shifts.show', $shift) }}" class="rounded bg-slate-700 px-3 py-2 text-sm">Details</a>
+        @if ($shift->is_fully_staffed)<span class="rounded bg-emerald-700 px-3 py-2 text-sm">Volgeboekt</span>@elseif ($shift->has_staff_shortage)<span class="rounded bg-amber-700 px-3 py-2 text-sm" title="Nog niet alle benodigde medewerkers zijn ingeschreven">!</span>@endif
+        @if (auth()->user()->role === 'planner') <form method="POST" action="{{ route('shifts.destroy', $shift) }}">@csrf @method('DELETE')<button class="rounded bg-rose-600 px-3 py-2 text-sm">Verwijderen</button></form>@endif
         @if (auth()->user()->role === 'medewerker')
             @if ($shift->users->contains(auth()->id())) <form method="POST" action="{{ route('shifts.unenroll', $shift) }}">@csrf @method('DELETE')<button class="rounded bg-rose-600 px-3 py-2 text-sm">Uitschrijven</button></form>
             @else <form method="POST" action="{{ route('shifts.enroll', $shift) }}">@csrf<button class="rounded bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950">Inschrijven</button></form> @endif

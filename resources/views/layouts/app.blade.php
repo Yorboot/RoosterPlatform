@@ -16,6 +16,7 @@
                 <a href="{{ route('profile') }}" class="hover:text-cyan-300">Mijn profiel</a>
                 @if (auth()->user()->role === 'planner')
                     <a href="{{ route('shifts.create') }}" class="hover:text-cyan-300">Nieuwe dienst</a>
+                    <a href="{{ route('tasks.unassigned') }}" class="hover:text-cyan-300">Losse taken</a>
                 @endif
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf <input type="hidden" name="_html" value="1">
@@ -30,6 +31,9 @@
 <main class="mx-auto max-w-6xl px-6 py-8">
     @if (session('success'))
         <div class="mb-6 rounded border border-emerald-500/40 bg-emerald-500/10 p-4 text-emerald-200">{{ session('success') }}</div>
+    @endif
+    @if (session('warning'))
+        <div class="mb-6 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-amber-200">{{ session('warning') }}</div>
     @endif
     @if ($errors->any())
         <div class="mb-6 rounded border border-red-500/40 bg-red-500/10 p-4 text-red-200">

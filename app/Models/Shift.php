@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 #[Fillable(['title', 'description', 'department', 'required_staff', 'scheduled_date', 'begin_time', 'end_time', 'status'])]
 class Shift extends Model
@@ -41,9 +42,37 @@ class Shift extends Model
 
     protected function isCompleted(): Attribute
     {
-        return Attribute::get(fn (): bool => $this->scheduled_date
-            ->copy()
-            ->setTimeFromTimeString($this->end_time)
-            ->isPast());
+        return Attribute::get(fn (): bool => $this->endDateTime()->isPast());
+    }
+
+    protected function isFullyStaffed(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->users()->count() >= $this->required_staff);
+    }
+
+    protected function hasStaffShortage(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->users()->count() < $this->required_staff);
+    }
+
+    public function startDateTime(): Carbon
+    {
+        return $this->scheduled_date->copy()->setTimeFromTimeString($this->begin_time);
+    }
+
+    public function endDateTime(): Carbon
+    {
+        $end = $this->scheduled_date->copy()->setTimeFromTimeString($this->end_time);
+
+        if ($end->lessThanOrEqualTo($this->startDateTime())) {
+            $end->addDay();
+        }
+
+        return $end;
+    }
+
+    public function isActive(): bool
+    {
+        return now()->betweenIncluded($this->startDateTime(), $this->endDateTime()->subSecond());
     }
 }

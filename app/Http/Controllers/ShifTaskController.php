@@ -15,6 +15,14 @@ class ShifTaskController extends Controller
         return view('tasks.form', ['shift' => $shift, 'task' => new ShiftTask]);
     }
 
+    public function unassigned(): View
+    {
+        $tasks = ShiftTask::query()->whereNull('shift_id')->latest()->get();
+        $shifts = Shift::query()->orderBy('scheduled_date')->orderBy('begin_time')->get();
+
+        return view('tasks.unassigned', compact('tasks', 'shifts'));
+    }
+
     public function store(Request $request, Shift $shift): RedirectResponse
     {
         $shift->tasks()->create($this->validated($request));
@@ -58,9 +66,34 @@ class ShifTaskController extends Controller
                 'task' => 'Je kunt alleen taken wijzigen van een dienst waarvoor je bent ingeschreven.',
             ]);
         }
+        if (! $task->shift->isActive()) {
+            return back()->withErrors([
+                'task' => 'Een taak kan alleen tijdens de dienst worden gewijzigd.',
+            ]);
+        }
         $task->update(['status' => $request->string('status')]);
 
         return back()->with('success', 'Taakstatus bijgewerkt.');
+    }
+
+    public function assign(Request $request, ShiftTask $task): RedirectResponse
+    {
+        $data = $request->validate([
+            'shift_id' => ['required', 'integer', 'exists:shifts,id'],
+        ], [
+            'shift_id.required' => 'Kies een dienst.',
+            'shift_id.exists' => 'De gekozen dienst bestaat niet.',
+        ]);
+
+        if ($task->shift_id !== null) {
+            return back()->withErrors([
+                'task' => 'Deze taak is al aan een dienst gekoppeld.',
+            ]);
+        }
+
+        $task->update(['shift_id' => $data['shift_id']]);
+
+        return back()->with('success', 'Taak aan de dienst gekoppeld.');
     }
 
     private function validated(Request $request): array
